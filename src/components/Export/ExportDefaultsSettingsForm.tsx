@@ -55,10 +55,8 @@ export function ExportDefaultsSettingsForm({
   layout = 'stacked'
 }: ExportDefaultsSettingsFormProps) {
   const [showExportExcelColumnsSelect, setShowExportExcelColumnsSelect] = useState(false)
-  const [showExportConcurrencySelect, setShowExportConcurrencySelect] = useState(false)
   const [isExportDateRangeDialogOpen, setIsExportDateRangeDialogOpen] = useState(false)
   const exportExcelColumnsDropdownRef = useRef<HTMLDivElement>(null)
-  const exportConcurrencyDropdownRef = useRef<HTMLDivElement>(null)
 
   const [exportDefaultFormat, setExportDefaultFormat] = useState('excel')
   const [exportDefaultDateRange, setExportDefaultDateRange] = useState<ExportDateRangeSelection>(() => createDefaultExportDateRangeSelection())
@@ -100,19 +98,15 @@ export function ExportDefaultsSettingsForm({
       if (showExportExcelColumnsSelect && exportExcelColumnsDropdownRef.current && !exportExcelColumnsDropdownRef.current.contains(target)) {
         setShowExportExcelColumnsSelect(false)
       }
-      if (showExportConcurrencySelect && exportConcurrencyDropdownRef.current && !exportConcurrencyDropdownRef.current.contains(target)) {
-        setShowExportConcurrencySelect(false)
-      }
     }
 
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [showExportExcelColumnsSelect, showExportConcurrencySelect])
+  }, [showExportExcelColumnsSelect])
 
   const exportExcelColumnsValue = exportDefaultExcelCompactColumns ? 'compact' : 'full'
   const exportDateRangeLabel = useMemo(() => getExportDateRangeLabel(exportDefaultDateRange), [exportDefaultDateRange])
   const exportExcelColumnsLabel = useMemo(() => getOptionLabel(exportExcelColumnOptions, exportExcelColumnsValue), [exportExcelColumnsValue])
-  const exportConcurrencyLabel = String(exportDefaultConcurrency)
 
   const notify = (text: string, success = true) => {
     onNotify?.(text, success)
@@ -126,39 +120,23 @@ export function ExportDefaultsSettingsForm({
           <span className="form-hint">导出多个会话时的最大并发（1~6）</span>
         </div>
         <div className="form-control">
-          <div className="select-field" ref={exportConcurrencyDropdownRef}>
-            <button
-              type="button"
-              className={`select-trigger ${showExportConcurrencySelect ? 'open' : ''}`}
-              onClick={() => {
-                setShowExportConcurrencySelect(!showExportConcurrencySelect)
-                setIsExportDateRangeDialogOpen(false)
-                setShowExportExcelColumnsSelect(false)
-              }}
-            >
-              <span className="select-value">{exportConcurrencyLabel}</span>
-              <ChevronDown size={16} />
-            </button>
-            {showExportConcurrencySelect && (
-              <div className="select-dropdown">
-                {exportConcurrencyOptions.map((option) => (
-                  <button
-                    key={option}
-                    type="button"
-                    className={`select-option ${exportDefaultConcurrency === option ? 'active' : ''}`}
-                    onClick={async () => {
-                      setExportDefaultConcurrency(option)
-                      await configService.setExportDefaultConcurrency(option)
-                      onDefaultsChanged?.({ concurrency: option })
-                      notify(`已将导出并发数设为 ${option}`, true)
-                      setShowExportConcurrencySelect(false)
-                    }}
-                  >
-                    <span className="option-label">{option}</span>
-                  </button>
-                ))}
-              </div>
-            )}
+          <div className="concurrency-inline-options" role="radiogroup" aria-label="导出并发数">
+            {exportConcurrencyOptions.map((option) => (
+              <button
+                key={option}
+                type="button"
+                className={`concurrency-option ${exportDefaultConcurrency === option ? 'active' : ''}`}
+                aria-pressed={exportDefaultConcurrency === option}
+                onClick={async () => {
+                  setExportDefaultConcurrency(option)
+                  await configService.setExportDefaultConcurrency(option)
+                  onDefaultsChanged?.({ concurrency: option })
+                  notify(`已将导出并发数设为 ${option}`, true)
+                }}
+              >
+                {option}
+              </button>
+            ))}
           </div>
         </div>
       </div>
@@ -202,7 +180,6 @@ export function ExportDefaultsSettingsForm({
               className={`settings-time-range-trigger ${isExportDateRangeDialogOpen ? 'open' : ''}`}
               onClick={() => {
                 setShowExportExcelColumnsSelect(false)
-                setShowExportConcurrencySelect(false)
                 setIsExportDateRangeDialogOpen(true)
               }}
             >
@@ -267,7 +244,6 @@ export function ExportDefaultsSettingsForm({
               onClick={() => {
                 setShowExportExcelColumnsSelect(!showExportExcelColumnsSelect)
                 setIsExportDateRangeDialogOpen(false)
-                setShowExportConcurrencySelect(false)
               }}
             >
               <span className="select-value">{exportExcelColumnsLabel}</span>
