@@ -94,6 +94,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
       return () => ipcRenderer.removeListener('window:maximizeStateChanged', listener)
     },
     close: () => ipcRenderer.send('window:close'),
+    onCloseConfirmRequested: (callback: (payload: { canMinimizeToTray: boolean }) => void) => {
+      const listener = (_: unknown, payload: { canMinimizeToTray: boolean }) => callback(payload)
+      ipcRenderer.on('window:confirmCloseRequested', listener)
+      return () => ipcRenderer.removeListener('window:confirmCloseRequested', listener)
+    },
+    respondCloseConfirm: (action: 'tray' | 'quit' | 'cancel') =>
+      ipcRenderer.invoke('window:respondCloseConfirm', action),
     openAgreementWindow: () => ipcRenderer.invoke('window:openAgreementWindow'),
     completeOnboarding: () => ipcRenderer.invoke('window:completeOnboarding'),
     openOnboardingWindow: () => ipcRenderer.invoke('window:openOnboardingWindow'),
@@ -285,6 +292,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getGroupMessageRanking: (chatroomId: string, limit?: number, startTime?: number, endTime?: number) => ipcRenderer.invoke('groupAnalytics:getGroupMessageRanking', chatroomId, limit, startTime, endTime),
     getGroupActiveHours: (chatroomId: string, startTime?: number, endTime?: number) => ipcRenderer.invoke('groupAnalytics:getGroupActiveHours', chatroomId, startTime, endTime),
     getGroupMediaStats: (chatroomId: string, startTime?: number, endTime?: number) => ipcRenderer.invoke('groupAnalytics:getGroupMediaStats', chatroomId, startTime, endTime),
+    getGroupMemberMessages: (
+      chatroomId: string,
+      memberUsername: string,
+      options?: { startTime?: number; endTime?: number; limit?: number; cursor?: number }
+    ) => ipcRenderer.invoke('groupAnalytics:getGroupMemberMessages', chatroomId, memberUsername, options),
     exportGroupMembers: (chatroomId: string, outputPath: string) => ipcRenderer.invoke('groupAnalytics:exportGroupMembers', chatroomId, outputPath),
     exportGroupMemberMessages: (chatroomId: string, memberUsername: string, outputPath: string, startTime?: number, endTime?: number) =>
       ipcRenderer.invoke('groupAnalytics:exportGroupMemberMessages', chatroomId, memberUsername, outputPath, startTime, endTime)

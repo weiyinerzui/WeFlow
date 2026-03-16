@@ -62,6 +62,7 @@ export const CONFIG_KEYS = {
   NOTIFICATION_POSITION: 'notificationPosition',
   NOTIFICATION_FILTER_MODE: 'notificationFilterMode',
   NOTIFICATION_FILTER_LIST: 'notificationFilterList',
+  WINDOW_CLOSE_BEHAVIOR: 'windowCloseBehavior',
 
   // 词云
   WORD_CLOUD_EXCLUDE_WORDS: 'wordCloudExcludeWords',
@@ -84,6 +85,8 @@ export interface ExportDefaultMediaConfig {
   voices: boolean
   emojis: boolean
 }
+
+export type WindowCloseBehavior = 'ask' | 'tray' | 'quit'
 
 const DEFAULT_EXPORT_MEDIA_CONFIG: ExportDefaultMediaConfig = {
   images: true,
@@ -1186,6 +1189,16 @@ export async function getNotificationFilterList(): Promise<string[]> {
 // 设置通知过滤列表
 export async function setNotificationFilterList(list: string[]): Promise<void> {
   await config.set(CONFIG_KEYS.NOTIFICATION_FILTER_LIST, list)
+}
+
+export async function getWindowCloseBehavior(): Promise<WindowCloseBehavior> {
+  const value = await config.get(CONFIG_KEYS.WINDOW_CLOSE_BEHAVIOR)
+  if (value === 'tray' || value === 'quit') return value
+  return 'ask'
+}
+
+export async function setWindowCloseBehavior(behavior: WindowCloseBehavior): Promise<void> {
+  await config.set(CONFIG_KEYS.WINDOW_CLOSE_BEHAVIOR, behavior)
 }
 
 // 获取词云排除词列表

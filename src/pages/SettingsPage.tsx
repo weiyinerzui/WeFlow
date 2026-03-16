@@ -107,9 +107,11 @@ function SettingsPage({ onClose }: SettingsPageProps = {}) {
   const [notificationPosition, setNotificationPosition] = useState<'top-right' | 'top-left' | 'bottom-right' | 'bottom-left' | 'top-center'>('top-right')
   const [notificationFilterMode, setNotificationFilterMode] = useState<'all' | 'whitelist' | 'blacklist'>('all')
   const [notificationFilterList, setNotificationFilterList] = useState<string[]>([])
+  const [windowCloseBehavior, setWindowCloseBehavior] = useState<configService.WindowCloseBehavior>('ask')
   const [filterSearchKeyword, setFilterSearchKeyword] = useState('')
   const [filterModeDropdownOpen, setFilterModeDropdownOpen] = useState(false)
   const [positionDropdownOpen, setPositionDropdownOpen] = useState(false)
+  const [closeBehaviorDropdownOpen, setCloseBehaviorDropdownOpen] = useState(false)
 
   const [wordCloudExcludeWords, setWordCloudExcludeWords] = useState<string[]>([])
   const [excludeWordsInput, setExcludeWordsInput] = useState('')
@@ -253,15 +255,16 @@ function SettingsPage({ onClose }: SettingsPageProps = {}) {
       if (!target.closest('.custom-select')) {
         setFilterModeDropdownOpen(false)
         setPositionDropdownOpen(false)
+        setCloseBehaviorDropdownOpen(false)
       }
     }
-    if (filterModeDropdownOpen || positionDropdownOpen) {
+    if (filterModeDropdownOpen || positionDropdownOpen || closeBehaviorDropdownOpen) {
       document.addEventListener('click', handleClickOutside)
     }
     return () => {
       document.removeEventListener('click', handleClickOutside)
     }
-  }, [filterModeDropdownOpen, positionDropdownOpen])
+  }, [closeBehaviorDropdownOpen, filterModeDropdownOpen, positionDropdownOpen])
 
 
   const loadConfig = async () => {
@@ -283,6 +286,7 @@ function SettingsPage({ onClose }: SettingsPageProps = {}) {
       const savedNotificationPosition = await configService.getNotificationPosition()
       const savedNotificationFilterMode = await configService.getNotificationFilterMode()
       const savedNotificationFilterList = await configService.getNotificationFilterList()
+      const savedWindowCloseBehavior = await configService.getWindowCloseBehavior()
 
       const savedAuthEnabled = await window.electronAPI.auth.verifyEnabled()
       const savedAuthUseHello = await configService.getAuthUseHello()
@@ -318,6 +322,7 @@ function SettingsPage({ onClose }: SettingsPageProps = {}) {
       setNotificationPosition(savedNotificationPosition)
       setNotificationFilterMode(savedNotificationFilterMode)
       setNotificationFilterList(savedNotificationFilterList)
+      setWindowCloseBehavior(savedWindowCloseBehavior)
 
       const savedExcludeWords = await configService.getWordCloudExcludeWords()
       setWordCloudExcludeWords(savedExcludeWords)
@@ -1023,6 +1028,61 @@ function SettingsPage({ onClose }: SettingsPageProps = {}) {
             {currentTheme === theme.id && <div className="theme-check"><Check size={14} /></div>}
           </div>
         ))}
+      </div>
+
+      <div className="divider" />
+
+      <div className="form-group">
+        <label>关闭主窗口时</label>
+        <span className="form-hint">设置点击关闭按钮后的默认行为；选择“每次询问”时会弹出关闭确认。</span>
+        <div className="custom-select">
+          <div
+            className={`custom-select-trigger ${closeBehaviorDropdownOpen ? 'open' : ''}`}
+            onClick={() => setCloseBehaviorDropdownOpen(!closeBehaviorDropdownOpen)}
+          >
+            <span className="custom-select-value">
+              {windowCloseBehavior === 'tray'
+                ? '最小化到系统托盘'
+                : windowCloseBehavior === 'quit'
+                  ? '完全关闭'
+                  : '每次询问'}
+            </span>
+            <ChevronDown size={14} className={`custom-select-arrow ${closeBehaviorDropdownOpen ? 'rotate' : ''}`} />
+          </div>
+          <div className={`custom-select-dropdown ${closeBehaviorDropdownOpen ? 'open' : ''}`}>
+            {[
+              {
+                value: 'ask' as const,
+                label: '每次询问',
+                successMessage: '已恢复关闭确认弹窗'
+              },
+              {
+                value: 'tray' as const,
+                label: '最小化到系统托盘',
+                successMessage: '关闭按钮已改为最小化到托盘'
+              },
+              {
+                value: 'quit' as const,
+                label: '完全关闭',
+                successMessage: '关闭按钮已改为完全关闭'
+              }
+            ].map(option => (
+              <div
+                key={option.value}
+                className={`custom-select-option ${windowCloseBehavior === option.value ? 'selected' : ''}`}
+                onClick={async () => {
+                  setWindowCloseBehavior(option.value)
+                  setCloseBehaviorDropdownOpen(false)
+                  await configService.setWindowCloseBehavior(option.value)
+                  showMessage(option.successMessage, true)
+                }}
+              >
+                {option.label}
+                {windowCloseBehavior === option.value && <Check size={14} />}
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   )

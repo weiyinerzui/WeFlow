@@ -14,6 +14,8 @@ export interface ElectronAPI {
     isMaximized: () => Promise<boolean>
     onMaximizeStateChanged: (callback: (isMaximized: boolean) => void) => () => void
     close: () => void
+    onCloseConfirmRequested: (callback: (payload: { canMinimizeToTray: boolean }) => void) => () => void
+    respondCloseConfirm: (action: 'tray' | 'quit' | 'cancel') => Promise<boolean>
     openAgreementWindow: () => Promise<boolean>
     completeOnboarding: () => Promise<boolean>
     openOnboardingWindow: () => Promise<boolean>
@@ -489,6 +491,19 @@ export interface ElectronAPI {
           count: number
         }>
         total: number
+      }
+      error?: string
+    }>
+    getGroupMemberMessages: (
+      chatroomId: string,
+      memberUsername: string,
+      options?: { startTime?: number; endTime?: number; limit?: number; cursor?: number }
+    ) => Promise<{
+      success: boolean
+      data?: {
+        messages: Message[]
+        hasMore: boolean
+        nextCursor: number
       }
       error?: string
     }>

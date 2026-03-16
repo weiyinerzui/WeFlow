@@ -97,6 +97,9 @@ let mainWindowReady = false
 let shouldShowMain = true
 let isAppQuitting = false
 let tray: Tray | null = null
+let isClosePromptVisible = false
+
+type WindowCloseBehavior = 'ask' | 'tray' | 'quit'
 
 // 更新下载状态管理（Issue #294 修复）
 let isDownloadInProgress = false
@@ -253,6 +256,19 @@ const setupCustomTitleBarWindow = (win: BrowserWindow): void => {
   win.webContents.on('did-finish-load', emitMaximizeState)
 }
 
+const getWindowCloseBehavior = (): WindowCloseBehavior => {
+  const behavior = configService?.get('windowCloseBehavior')
+  return behavior === 'tray' || behavior === 'quit' ? behavior : 'ask'
+}
+
+const requestMainWindowCloseConfirmation = (win: BrowserWindow): void => {
+  if (isClosePromptVisible) return
+  isClosePromptVisible = true
+  win.webContents.send('window:confirmCloseRequested', {
+    canMinimizeToTray: Boolean(tray)
+  })
+}
+
 function createWindow(options: { autoShow?: boolean } = {}) {
   // 获取图标路径 - 打包后在 resources 目录
   const { autoShow = true } = options
@@ -354,10 +370,22 @@ function createWindow(options: { autoShow?: boolean } = {}) {
   })
 
   win.on('close', (e) => {
-    if (isAppQuitting) return
-    // 关闭主窗口时隐藏到状态栏而不是退出
+    if (isAppQuitting || win !== mainWindow) return
     e.preventDefault()
-    win.hide()
+    const closeBehavior = getWindowCloseBehavior()
+
+    if (closeBehavior === 'quit') {
+      isAppQuitting = true
+      app.quit()
+      return
+    }
+
+    if (closeBehavior === 'tray' && tray) {
+      win.hide()
+      return
+    }
+
+    requestMainWindowCloseConfirmation(win)
   })
 
   win.on('closed', () => {
@@ -365,6 +393,7 @@ function createWindow(options: { autoShow?: boolean } = {}) {
 
     mainWindow = null
     mainWindowReady = false
+    isClosePromptVisible = false
 
     if (process.platform !== 'darwin' && !isAppQuitting) {
       destroyNotificationWindow()
@@ -1154,6 +1183,33 @@ function registerIpcHandlers() {
     BrowserWindow.fromWebContents(event.sender)?.close()
   })
 
+  ipcMain.handle('window:respondCloseConfirm', async (_event, action: 'tray' | 'quit' | 'cancel') => {
+    if (!mainWindow || mainWindow.isDestroyed()) {
+      isClosePromptVisible = false
+      return false
+    }
+
+    try {
+      if (action === 'tray') {
+        if (tray) {
+          mainWindow.hide()
+          return true
+        }
+        return false
+      }
+
+      if (action === 'quit') {
+        isAppQuitting = true
+        app.quit()
+        return true
+      }
+
+      return true
+    } finally {
+      isClosePromptVisible = false
+    }
+  })
+
   // 更新窗口控件主题色
   ipcMain.on('window:setTitleBarOverlay', (event, options: { symbolColor: string }) => {
     const win = BrowserWindow.fromWebContents(event.sender)
@@ -1892,6 +1948,18 @@ function registerIpcHandlers() {
   ipcMain.handle('groupAnalytics:getGroupMediaStats', async (_, chatroomId: string, startTime?: number, endTime?: number) => {
     return groupAnalyticsService.getGroupMediaStats(chatroomId, startTime, endTime)
   })
+
+  ipcMain.handle(
+    'groupAnalytics:getGroupMemberMessages',
+    async (
+      _,
+      chatroomId: string,
+      memberUsername: string,
+      options?: { startTime?: number; endTime?: number; limit?: number; cursor?: number }
+    ) => {
+      return groupAnalyticsService.getGroupMemberMessages(chatroomId, memberUsername, options)
+    }
+  )
 
   ipcMain.handle('groupAnalytics:exportGroupMembers', async (_, chatroomId: string, outputPath: string) => {
     return groupAnalyticsService.exportGroupMembers(chatroomId, outputPath)
