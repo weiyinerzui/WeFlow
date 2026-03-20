@@ -212,6 +212,11 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.45;
+    }
   }
 }
 
@@ -251,9 +256,21 @@
     transform: translateY(-1px);
   }
 
+  &:disabled:hover {
+    border-color: transparent;
+    transform: none;
+  }
+
   &.outside {
     color: var(--text-quaternary);
     opacity: 0.72;
+  }
+
+  &.disabled {
+    cursor: not-allowed;
+    opacity: 0.35;
+    transform: none;
+    border-color: transparent;
   }
 
   &.in-range {

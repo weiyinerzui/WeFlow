@@ -25,6 +25,8 @@ interface ExportDateRangeDialogProps {
   open: boolean
   value: ExportDateRangeSelection
   title?: string
+  minDate?: Date | null
+  maxDate?: Date | null
   onClose: () => void
   onConfirm: (value: ExportDateRangeSelection) => void
 }
@@ -35,19 +37,65 @@ interface ExportDateRangeDialogDraft extends ExportDateRangeSelection {
   panelMonth: Date
 }
 
-const buildDialogDraft = (value: ExportDateRangeSelection): ExportDateRangeDialogDraft => ({
-  ...cloneExportDateRangeSelection(value),
-  panelMonth: toMonthStart(value.dateRange.start)
-})
+const resolveBounds = (minDate?: Date | null, maxDate?: Date | null): { minDate: Date; maxDate: Date } | null => {
+  if (!(minDate instanceof Date) || Number.isNaN(minDate.getTime())) return null
+  if (!(maxDate instanceof Date) || Number.isNaN(maxDate.getTime())) return null
+  const normalizedMin = startOfDay(minDate)
+  const normalizedMax = endOfDay(maxDate)
+  if (normalizedMin.getTime() > normalizedMax.getTime()) return null
+  return {
+    minDate: normalizedMin,
+    maxDate: normalizedMax
+  }
+}
+
+const clampSelectionToBounds = (
+  value: ExportDateRangeSelection,
+  minDate?: Date | null,
+  maxDate?: Date | null
+): ExportDateRangeSelection => {
+  const bounds = resolveBounds(minDate, maxDate)
+  if (!bounds) return cloneExportDateRangeSelection(value)
+
+  const rawStart = value.useAllTime ? bounds.minDate : startOfDay(value.dateRange.start)
+  const rawEnd = value.useAllTime ? bounds.maxDate : endOfDay(value.dateRange.end)
+  const nextStart = new Date(Math.min(Math.max(rawStart.getTime(), bounds.minDate.getTime()), bounds.maxDate.getTime()))
+  const nextEndCandidate = new Date(Math.min(Math.max(rawEnd.getTime(), bounds.minDate.getTime()), bounds.maxDate.getTime()))
+  const nextEnd = nextEndCandidate.getTime() < nextStart.getTime() ? endOfDay(nextStart) : nextEndCandidate
+  const changed = nextStart.getTime() !== rawStart.getTime() || nextEnd.getTime() !== rawEnd.getTime()
+
+  return {
+    preset: value.useAllTime ? value.preset : (changed ? 'custom' : value.preset),
+    useAllTime: value.useAllTime,
+    dateRange: {
+      start: nextStart,
+      end: nextEnd
+    }
+  }
+}
+
+const buildDialogDraft = (
+  value: ExportDateRangeSelection,
+  minDate?: Date | null,
+  maxDate?: Date | null
+): ExportDateRangeDialogDraft => {
+  const nextValue = clampSelectionToBounds(value, minDate, maxDate)
+  return {
+    ...nextValue,
+    panelMonth: toMonthStart(nextValue.dateRange.start)
+  }
+}
 
 export function ExportDateRangeDialog({
   open,
   value,
   title = '时间范围设置',
+  minDate,
+  maxDate,
   onClose,
   onConfirm
 }: ExportDateRangeDialogProps) {
-  const [draft, setDraft] = useState<ExportDateRangeDialogDraft>(() => buildDialogDraft(value))
+  const [draft, setDraft] = useState<ExportDateRangeDialogDraft>(() => buildDialogDraft(value, minDate, maxDate))
   const [activeBoundary, setActiveBoundary] = useState<ActiveBoundary>('start')
   const [dateInput, setDateInput] = useState({
     start: formatDateInputValue(value.dateRange.start),
@@ -57,7 +105,7 @@ export function ExportDateRangeDialog({
 
   useEffect(() => {
     if (!open) return
-    const nextDraft = buildDialogDraft(value)
+    const nextDraft = buildDialogDraft(value, minDate, maxDate)
     setDraft(nextDraft)
     setActiveBoundary('start')
     setDateInput({
@@ -65,7 +113,7 @@ export function ExportDateRangeDialog({
       end: formatDateInputValue(nextDraft.dateRange.end)
     })
     setDateInputError({ start: false, end: false })
-  }, [open, value])
+  }, [maxDate, minDate, open, value])
 
   useEffect(() => {
     if (!open) return
@@ -76,8 +124,24 @@ export function ExportDateRangeDialog({
     setDateInputError({ start: false, end: false })
   }, [draft.dateRange.end.getTime(), draft.dateRange.start.getTime(), open])
 
-  const setRangeStart = useCallback((targetDate: Date) => {
+  const bounds = useMemo(() => resolveBounds(minDate, maxDate), [maxDate, minDate])
+  const clampStartDate = useCallback((targetDate: Date) => {
     const start = startOfDay(targetDate)
+    if (!bounds) return start
+    if (start.getTime() < bounds.minDate.getTime()) return bounds.minDate
+    if (start.getTime() > bounds.maxDate.getTime()) return startOfDay(bounds.maxDate)
+    return start
+  }, [bounds])
+  const clampEndDate = useCallback((targetDate: Date) => {
+    const end = endOfDay(targetDate)
+    if (!bounds) return end
+    if (end.getTime() < bounds.minDate.getTime()) return endOfDay(bounds.minDate)
+    if (end.getTime() > bounds.maxDate.getTime()) return bounds.maxDate
+    return end
+  }, [bounds])
+
+  const setRangeStart = useCallback((targetDate: Date) => {
+    const start = clampStartDate(targetDate)
     setDraft(prev => {
       const nextEnd = prev.dateRange.end < start ? endOfDay(start) : prev.dateRange.end
       return {
@@ -91,12 +155,12 @@ export function ExportDateRangeDialog({
         panelMonth: toMonthStart(start)
       }
     })
-  }, [])
+  }, [clampStartDate])
 
   const setRangeEnd = useCallback((targetDate: Date) => {
-    const end = endOfDay(targetDate)
+    const end = clampEndDate(targetDate)
     setDraft(prev => {
-      const nextStart = prev.useAllTime ? startOfDay(targetDate) : prev.dateRange.start
+      const nextStart = prev.useAllTime ? clampStartDate(targetDate) : prev.dateRange.start
       const nextEnd = end < nextStart ? endOfDay(nextStart) : end
       return {
         ...prev,
@@ -109,11 +173,13 @@ export function ExportDateRangeDialog({
         panelMonth: toMonthStart(targetDate)
       }
     })
-  }, [])
+  }, [clampEndDate, clampStartDate])
 
   const applyPreset = useCallback((preset: Exclude<ExportDateRangePreset, 'custom'>) => {
     if (preset === 'all') {
-      const previewRange = createDefaultDateRange()
+      const previewRange = bounds
+        ? { start: bounds.minDate, end: bounds.maxDate }
+        : createDefaultDateRange()
       setDraft(prev => ({
         ...prev,
         preset,
@@ -125,7 +191,11 @@ export function ExportDateRangeDialog({
       return
     }
 
-    const range = createDateRangeByPreset(preset)
+    const range = clampSelectionToBounds({
+      preset,
+      useAllTime: false,
+      dateRange: createDateRangeByPreset(preset)
+    }, minDate, maxDate).dateRange
     setDraft(prev => ({
       ...prev,
       preset,
@@ -134,7 +204,7 @@ export function ExportDateRangeDialog({
       panelMonth: toMonthStart(range.start)
     }))
     setActiveBoundary('start')
-  }, [])
+  }, [bounds, maxDate, minDate])
 
   const commitStartFromInput = useCallback(() => {
     const parsed = parseDateInputValue(dateInput.start)
@@ -200,6 +270,10 @@ export function ExportDateRangeDialog({
   }, [draft])
 
   const calendarCells = useMemo(() => buildCalendarCells(draft.panelMonth), [draft.panelMonth])
+  const minPanelMonth = bounds ? toMonthStart(bounds.minDate) : null
+  const maxPanelMonth = bounds ? toMonthStart(bounds.maxDate) : null
+  const canShiftPrev = !minPanelMonth || draft.panelMonth.getTime() > minPanelMonth.getTime()
+  const canShiftNext = !maxPanelMonth || draft.panelMonth.getTime() < maxPanelMonth.getTime()
 
   const isStartSelected = useCallback((date: Date) => (
     !draft.useAllTime && isSameDay(date, draft.dateRange.start)
@@ -214,6 +288,12 @@ export function ExportDateRangeDialog({
     startOfDay(date).getTime() >= startOfDay(draft.dateRange.start).getTime() &&
     startOfDay(date).getTime() <= startOfDay(draft.dateRange.end).getTime()
   ), [draft])
+
+  const isDateSelectable = useCallback((date: Date) => {
+    if (!bounds) return true
+    const target = startOfDay(date).getTime()
+    return target >= startOfDay(bounds.minDate).getTime() && target <= startOfDay(bounds.maxDate).getTime()
+  }, [bounds])
 
   const hintText = draft.useAllTime
     ? '选择开始或结束日期后，会自动切换为自定义时间范围'
@@ -323,10 +403,10 @@ export function ExportDateRangeDialog({
               <strong>{formatCalendarMonthTitle(draft.panelMonth)}</strong>
             </div>
             <div className="export-date-range-calendar-nav">
-              <button type="button" onClick={() => shiftPanelMonth(-1)} aria-label="上个月">
+              <button type="button" onClick={() => shiftPanelMonth(-1)} aria-label="上个月" disabled={!canShiftPrev}>
                 <ChevronLeft size={14} />
               </button>
-              <button type="button" onClick={() => shiftPanelMonth(1)} aria-label="下个月">
+              <button type="button" onClick={() => shiftPanelMonth(1)} aria-label="下个月" disabled={!canShiftNext}>
                 <ChevronRight size={14} />
               </button>
             </div>
@@ -341,13 +421,16 @@ export function ExportDateRangeDialog({
               const startSelected = isStartSelected(cell.date)
               const endSelected = isEndSelected(cell.date)
               const inRange = isDateInRange(cell.date)
+              const selectable = isDateSelectable(cell.date)
               return (
                 <button
                   key={cell.date.getTime()}
                   type="button"
+                  disabled={!selectable}
                   className={[
                     'export-date-range-calendar-day',
                     cell.inCurrentMonth ? '' : 'outside',
+                    selectable ? '' : 'disabled',
                     inRange ? 'in-range' : '',
                     startSelected ? 'range-start' : '',
                     endSelected ? 'range-end' : '',
