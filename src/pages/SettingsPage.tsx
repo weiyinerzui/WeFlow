@@ -32,6 +32,7 @@ const tabs: { id: SettingsTab; label: string; icon: React.ElementType }[] = [
 
 const isMac = navigator.userAgent.toLowerCase().includes('mac')
 const isLinux = navigator.userAgent.toLowerCase().includes('linux')
+const isWindows = !isMac && !isLinux
 
 const dbDirName = isMac ? '2.0b4.0.9 目录' : 'xwechat_files 目录'
 const dbPathPlaceholder = isMac
@@ -193,9 +194,7 @@ function SettingsPage({ onClose }: SettingsPageProps = {}) {
 
   // 检查 Hello 可用性
   useEffect(() => {
-    if (window.PublicKeyCredential) {
-      void PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable().then(setHelloAvailable)
-    }
+    setHelloAvailable(isWindows)
   }, [])
 
   // 检查 HTTP API 服务状态
@@ -2039,33 +2038,29 @@ function SettingsPage({ onClose }: SettingsPageProps = {}) {
       showMessage('请输入当前密码以开启 Hello', false)
       return
     }
+    if (!isWindows) {
+      showMessage('当前系统不支持 Windows Hello', false)
+      return
+    }
     setIsSettingHello(true)
     try {
-      const challenge = new Uint8Array(32)
-      window.crypto.getRandomValues(challenge)
-
-      const credential = await navigator.credentials.create({
-        publicKey: {
-          challenge,
-          rp: { name: 'WeFlow', id: 'localhost' },
-          user: { id: new Uint8Array([1]), name: 'user', displayName: 'User' },
-          pubKeyCredParams: [{ alg: -7, type: 'public-key' }],
-          authenticatorSelection: { userVerification: 'required' },
-          timeout: 60000
-        }
-      })
-
-      if (credential) {
-        // 存储密码作为 Hello Secret，以便 Hello 解锁时能派生密钥
-        await window.electronAPI.auth.setHelloSecret(helloPassword)
-        setAuthUseHello(true)
-        setHelloPassword('')
-        showMessage('Windows Hello 设置成功', true)
+      const verifyResult = await window.electronAPI.auth.hello('请验证您的身份以开启 Windows Hello')
+      if (!verifyResult.success) {
+        showMessage(verifyResult.error || 'Windows Hello 验证失败', false)
+        return
       }
+
+      const saveResult = await window.electronAPI.auth.setHelloSecret(helloPassword)
+      if (!saveResult.success) {
+        showMessage('Windows Hello 配置保存失败', false)
+        return
+      }
+
+      setAuthUseHello(true)
+      setHelloPassword('')
+      showMessage('Windows Hello 设置成功', true)
     } catch (e: any) {
-      if (e.name !== 'NotAllowedError') {
-        showMessage(`Windows Hello 设置失败: ${e.message}`, false)
-      }
+      showMessage(`Windows Hello 设置失败: ${e?.message || String(e)}`, false)
     } finally {
       setIsSettingHello(false)
     }
