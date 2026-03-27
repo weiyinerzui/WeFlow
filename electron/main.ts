@@ -1300,7 +1300,7 @@ function registerIpcHandlers() {
     try {
       console.log('[Update] 开始下载更新...')
       await autoUpdater.downloadUpdate()
-    } catch (error) {
+    } catch (error: any) {
       console.error('[Update] 下载更新失败:', error)
       // 失败时清理状态和监听器
       isDownloadInProgress = false
@@ -1312,7 +1312,10 @@ function registerIpcHandlers() {
         autoUpdater.removeListener('update-downloaded', downloadedHandler)
         downloadedHandler = null
       }
-      throw error
+      
+      // 统一错误提示格式，避免出现 [object Object] 的 JSON 字符串
+      const errorMessage = error.message || (typeof error === 'string' ? error : JSON.stringify(error))
+      throw new Error(errorMessage)
     }
   })
 
@@ -2636,19 +2639,19 @@ function registerIpcHandlers() {
 
   // 密钥获取
   ipcMain.handle('key:autoGetDbKey', async (event) => {
-    return keyService.autoGetDbKey(180_000, (message, level) => {
+    return keyService.autoGetDbKey(180_000, (message: string, level: number) => {
       event.sender.send('key:dbKeyStatus', { message, level })
     })
   })
 
   ipcMain.handle('key:autoGetImageKey', async (event, manualDir?: string, wxid?: string) => {
-    return keyService.autoGetImageKey(manualDir, (message) => {
+    return keyService.autoGetImageKey(manualDir, (message: string) => {
       event.sender.send('key:imageKeyStatus', { message })
     }, wxid)
   })
 
   ipcMain.handle('key:scanImageKeyFromMemory', async (event, userDir: string) => {
-    return keyService.autoGetImageKeyByMemoryScan(userDir, (message) => {
+    return keyService.autoGetImageKeyByMemoryScan(userDir, (message: string) => {
       event.sender.send('key:imageKeyStatus', { message })
     })
   })

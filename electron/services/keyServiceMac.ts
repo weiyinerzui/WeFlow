@@ -389,7 +389,7 @@ export class KeyServiceMac {
       `set timeoutSec to ${timeoutSec}`,
       'try',
       'with timeout of timeoutSec seconds',
-      'set outText to do shell script cmd with administrator privileges',
+      'set outText to do shell script (cmd & " 2>&1") with administrator privileges',
       'end timeout',
       'return "WF_OK::" & outText',
       'on error errMsg number errNum partial result pr',
