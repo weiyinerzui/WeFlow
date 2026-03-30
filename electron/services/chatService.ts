@@ -2009,7 +2009,7 @@ class ChatService {
         selectableColumns = resolvedColumns
       }
 
-      if (!selectableColumns || selectableColumns.length === 0) return rows
+      if (selectableColumns.length === 0) return rows
 
       const selectColumns = ['username', ...selectableColumns]
       const sql = `SELECT ${selectColumns.map((column) => this.quoteSqlIdentifier(column)).join(', ')} FROM contact WHERE username IS NOT NULL AND username != ''`
