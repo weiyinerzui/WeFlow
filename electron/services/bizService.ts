@@ -194,12 +194,14 @@ export class BizService {
           for (const acc of result) if (typeMap[acc.username] !== undefined) acc.type = typeMap[acc.username]
         }
       }
-
-      return result.sort((a, b) => {
-        if (a.username === 'gh_3dfda90e39d6') return -1
-        if (b.username === 'gh_3dfda90e39d6') return 1
-        return b.last_time - a.last_time
-      })
+// 6. 排序与过滤：微信支付置顶，过滤朋友圈广告，其余按时间降序
+return result
+  .filter(acc => !acc.name.includes('朋友圈广告'))
+  .sort((a, b) => {
+    if (a.username === 'gh_3dfda90e39d6') return -1
+    if (b.username === 'gh_3dfda90e39d6') return 1
+    return b.last_time - a.last_time
+  })
     } catch (e) { return [] }
   }
 

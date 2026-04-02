@@ -200,8 +200,12 @@ export const BizMessageArea: React.FC<{
         </div>
         <div className="message-container" onScroll={handleScroll} ref={messageListRef}>
           <div className="messages-wrapper">
-            {messages.map((msg) => (
-                <div key={msg.local_id}>
+            {!loading && messages.length === 0 && (
+              <div className="biz-no-record">
+                <p>暂无本地记录</p>
+              </div>
+            )}
+            {messages.map((msg) => (                <div key={msg.local_id}>
                   {account.username === 'gh_3dfda90e39d6' ? (
                       <div className="pay-card">
                         <div className="pay-header">
