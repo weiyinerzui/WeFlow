@@ -1,4 +1,4 @@
-.settings-modal-overlay {
+﻿.settings-modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
@@ -1918,6 +1918,80 @@
   }
 }
 
+.settings-inline-modal {
+  width: min(560px, calc(100vw - 40px));
+  background: var(--bg-primary);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.2);
+  animation: slideUp 0.25s ease;
+
+  .modal-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border-color);
+
+    svg {
+      color: var(--primary);
+    }
+
+    h3 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+  }
+
+  .modal-body {
+    padding: 20px 24px;
+
+    .warning-text {
+      margin: 0 0 16px;
+      font-size: 14px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+  }
+
+  .modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 16px 24px;
+    border-top: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+  }
+}
+
+.social-cookie-textarea {
+  width: 100%;
+  min-height: 220px;
+  resize: vertical;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 12px;
+  line-height: 1.6;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+  margin-top: 10px;
+}
+
+.social-inline-error {
+  margin-top: 10px;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--danger) 72%, var(--text-primary) 28%);
+  background: color-mix(in srgb, var(--danger) 8%, var(--bg-secondary));
+  border: 1px solid color-mix(in srgb, var(--danger) 24%, var(--border-color));
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -3541,5 +3615,36 @@
       justify-content: space-between;
       max-width: none;
     }
+
+    &.insight-social-tab {
+      .anti-revoke-list-header {
+        grid-template-columns: minmax(0, 1fr) auto;
+
+        .insight-social-column-title {
+          display: none;
+        }
+      }
+
+      .anti-revoke-row {
+        display: flex;
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .insight-social-binding-cell,
+      .anti-revoke-row-status {
+        width: 100%;
+      }
+
+      .insight-social-binding-cell {
+        grid-template-columns: 1fr;
+      }
+
+      .insight-social-binding-feedback {
+        grid-column: 1;
+      }
+    }
   }
 }
+
+

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * insightService.ts
  *
  * AI 见解后台服务：
@@ -21,6 +21,7 @@ import { URL } from 'url'
 import { app, Notification } from 'electron'
 import { ConfigService } from './config'
 import { chatService, ChatSession, Message } from './chatService'
+import { weiboService } from './social/weiboService'
 
 // ─── 常量 ────────────────────────────────────────────────────────────────────
 
@@ -46,6 +47,10 @@ const INSIGHT_CONFIG_KEYS = new Set([
   'aiModelApiBaseUrl',
   'aiModelApiKey',
   'aiModelApiModel',
+  'aiInsightAllowSocialContext',
+  'aiInsightSocialContextCount',
+  'aiInsightWeiboCookie',
+  'aiInsightWeiboBindings',
   'dbPath',
   'decryptKey',
   'myWxid'
@@ -318,6 +323,10 @@ class InsightService {
     if (!INSIGHT_CONFIG_KEYS.has(normalizedKey)) return
 
     // 数据库相关配置变更后，丢弃缓存并强制下次重连
+    if (normalizedKey === 'aiInsightAllowSocialContext' || normalizedKey === 'aiInsightSocialContextCount' || normalizedKey === 'aiInsightWeiboCookie' || normalizedKey === 'aiInsightWeiboBindings') {
+      weiboService.clearCache()
+    }
+
     if (normalizedKey === 'dbPath' || normalizedKey === 'decryptKey' || normalizedKey === 'myWxid') {
       this.clearRuntimeCache()
     }
@@ -350,6 +359,7 @@ class InsightService {
     this.lastSeenTimestamp.clear()
     this.todayTriggers.clear()
     this.todayDate = getStartOfDay()
+    weiboService.clearCache()
   }
 
   private clearTimers(): void {
@@ -1028,6 +1038,8 @@ ${topMentionText}
       }
     }
 
+    const socialContextSection = await this.getSocialContextSection(sessionId)
+
     // ── 默认 system prompt（稳定内容，有利于 provider 端 prompt cache 命中）────
     const DEFAULT_SYSTEM_PROMPT = `你是用户的私人关系观察助手，名叫"见解"。你的任务是主动提供有价值的观察和建议。
 
@@ -1190,3 +1202,5 @@ ${topMentionText}
 }
 
 export const insightService = new InsightService()
+
+
