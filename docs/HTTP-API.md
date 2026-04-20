@@ -86,6 +86,7 @@ GET /api/v1/push/messages
 - `sourceName`
 - `groupName`（仅群聊）
 - `content`
+- `timestamp`（消息时间，秒级 Unix 时间戳）
 
 ### 示例
 
@@ -97,7 +98,7 @@ curl -N "http://127.0.0.1:5031/api/v1/push/messages?access_token=YOUR_TOKEN
 
 ```text
 event: message.new
-data: {"event":"message.new","sessionId":"xxx@chatroom","messageKey":"server:123456:1760000123:1760000123000:321:wxid_member:1","avatarUrl":"https://example.com/group.jpg","sourceName":"李四","groupName":"项目群","content":"[图片]"}
+data: {"event":"message.new","sessionId":"xxx@chatroom","messageKey":"server:123456:1760000123:1760000123000:321:wxid_member:1","avatarUrl":"https://example.com/group.jpg","sourceName":"李四","groupName":"项目群","content":"[图片]","timestamp":1760000123}
 ```
 
 ---

@@ -21,7 +21,6 @@ interface MessagePushPayload {
   sourceName: string
   groupName?: string
   content: string | null
-  eventId: string
   timestamp: number
 }
 
@@ -331,7 +330,6 @@ class MessagePushService {
         groupName,
         sourceName,
         content,
-        eventId: messageKey,
         timestamp: createTime
       }
     }
@@ -346,7 +344,6 @@ class MessagePushService {
       avatarUrl,
       sourceName: session.displayName || contactInfo?.displayName || sessionId,
       content,
-      eventId: messageKey,
       timestamp: createTime
     }
   }
