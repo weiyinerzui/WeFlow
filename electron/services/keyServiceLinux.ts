@@ -193,6 +193,12 @@ export class KeyServiceLinux {
       const targetAddr = scanRes.target_addr
       onStatus?.('基址扫描成功，正在请求管理员权限进行内存 Hook...', 0)
 
+      if (!this.sudo || typeof this.sudo.exec !== 'function') {
+        const err = 'Linux 授权组件 @vscode/sudo-prompt 未加载，请确认依赖已安装并重新启动 WeFlow'
+        onStatus?.(err, 2)
+        return { success: false, error: err }
+      }
+
       return await new Promise((resolve) => {
         const options = { name: 'WeFlow' }
         const command = `"${helperPath}" db_hook ${pid} ${targetAddr}`
